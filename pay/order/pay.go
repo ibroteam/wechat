@@ -57,7 +57,7 @@ type ConfigApp struct {
 	PartnerID string `json:"partnerid"`
 	PrePayID  string `json:"prepayid"`
 	Package   string `json:"package"`
-	NonceStr  string `json:"nonceStr"`
+	NonceStr  string `json:"noncestr"`
 	Timestamp string `json:"timestamp"`
 	Sign      string `json:"sign"`
 }
@@ -181,7 +181,7 @@ func (o *Order) AppBridgeConfig(p *Params) (cfg ConfigApp, err error) {
 	if err != nil {
 		return
 	}
-	
+
 	return
 }
 
