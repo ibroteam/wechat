@@ -51,6 +51,17 @@ type Config struct {
 	PaySign   string `json:"paySign"`
 }
 
+// ConfigApp 是传出用于 app sdk 用的参数
+type ConfigApp struct {
+	AppID     string `json:"appid"`
+	PartnerID string `json:"partnerid"`
+	PrePayID  string `json:"prepayid"`
+	Package   string `json:"package"`
+	NonceStr  string `json:"nonceStr"`
+	Timestamp string `json:"timestamp"`
+	Sign      string `json:"sign"`
+}
+
 // PreOrder 是 unifie order 接口的返回
 type PreOrder struct {
 	ReturnCode string `xml:"return_code"`
@@ -130,6 +141,47 @@ func (o *Order) BridgeConfig(p *Params) (cfg Config, err error) {
 	cfg.PrePayID = order.PrePayID
 	cfg.SignType = p.SignType
 	cfg.Package = "prepay_id=" + order.PrePayID
+	return
+}
+
+// AppBridgeConfig get app bridge config
+func (o *Order) AppBridgeConfig(p *Params) (cfg ConfigApp, err error) {
+	var (
+		buffer    strings.Builder
+		timestamp = strconv.FormatInt(time.Now().Unix(), 10)
+	)
+	order, err := o.PrePayOrder(p)
+	if err != nil {
+		return
+	}
+	cfg.AppID = order.AppID
+	cfg.NonceStr = order.NonceStr
+	cfg.Package = "Sign=WXPay"
+	cfg.PartnerID = order.MchID
+	cfg.PrePayID = order.PrePayID
+	cfg.Timestamp = timestamp
+
+	// 签名
+	buffer.WriteString("appid=")
+	buffer.WriteString(cfg.AppID)
+	buffer.WriteString("&noncestr=")
+	buffer.WriteString(cfg.NonceStr)
+	buffer.WriteString("&package=")
+	buffer.WriteString(cfg.Package)
+	buffer.WriteString("&partnerid=")
+	buffer.WriteString(cfg.PartnerID)
+	buffer.WriteString("&prepayid=")
+	buffer.WriteString(cfg.PrePayID)
+	buffer.WriteString("&timestamp=")
+	buffer.WriteString(cfg.Timestamp)
+	buffer.WriteString("&key=")
+	buffer.WriteString(o.Key)
+
+	cfg.Sign, err = util.CalculateSign(buffer.String(), util.SignTypeMD5, "")
+	if err != nil {
+		return
+	}
+	
 	return
 }
 
