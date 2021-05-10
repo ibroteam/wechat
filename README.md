@@ -14,7 +14,7 @@
 
 ## 快速开始
 ```
-import github.com/silenceper/wechat/v2
+import "github.com/silenceper/wechat/v2"
 ```
 
 以下是一个微信公众号处理消息接收以及回复的例子：
@@ -35,7 +35,7 @@ officialAccount := wc.GetOfficialAccount(cfg)
 // 传入request和responseWriter
 server := officialAccount.GetServer(req, rw)
 //设置接收消息的处理方法
-server.SetMessageHandler(func(msg message.MixMessage) *message.Reply {
+server.SetMessageHandler(func(msg *message.MixMessage) *message.Reply {
 
     //回复消息：演示回复用户发送的消息
     text := message.NewText(msg.Content)
@@ -58,7 +58,7 @@ server.Send()
 - miniprogram: 小程序API
 - minigame:小游戏API
 - pay:微信支付API
-- opernplatform:开放平台API
+- openplatform:开放平台API
 - work:企业微信
 - aispeech:智能对话
 

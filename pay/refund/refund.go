@@ -21,32 +21,36 @@ func NewRefund(cfg *config.Config) *Refund {
 	return &refund
 }
 
-//Params 调用参数
+// Params 调用参数
 type Params struct {
 	TransactionID string
 	OutRefundNo   string
+	OutTradeNo    string
 	TotalFee      string
 	RefundFee     string
 	RefundDesc    string
-	RootCa        string //ca证书
+	RootCa        string // ca证书
+	NotifyURL     string
+	SignType      string
 }
 
-//request 接口请求参数
+// request 接口请求参数
 type request struct {
 	AppID         string `xml:"appid"`
 	MchID         string `xml:"mch_id"`
 	NonceStr      string `xml:"nonce_str"`
 	Sign          string `xml:"sign"`
 	SignType      string `xml:"sign_type,omitempty"`
-	TransactionID string `xml:"transaction_id"`
+	TransactionID string `xml:"transaction_id,omitempty"`
+	OutTradeNo    string `xml:"out_trade_no,omitempty"`
 	OutRefundNo   string `xml:"out_refund_no"`
 	TotalFee      string `xml:"total_fee"`
 	RefundFee     string `xml:"refund_fee"`
 	RefundDesc    string `xml:"refund_desc,omitempty"`
-	//NotifyUrl     string `xml:"notify_url,omitempty"`
+	NotifyURL     string `xml:"notify_url,omitempty"`
 }
 
-//Response 接口返回
+// Response 接口返回
 type Response struct {
 	ReturnCode          string `xml:"return_code"`
 	ReturnMsg           string `xml:"return_msg"`
@@ -70,38 +74,35 @@ type Response struct {
 	CashFeeType         string `xml:"cash_fee_type,omitempty"`
 }
 
-//Refund 退款申请
+// Refund 退款申请
 func (refund *Refund) Refund(p *Params) (rsp Response, err error) {
-	nonceStr := util.RandomStr(32)
-	param := make(map[string]string)
-	param["appid"] = refund.AppID
-	param["mch_id"] = refund.MchID
-	param["nonce_str"] = nonceStr
-	param["out_refund_no"] = p.OutRefundNo
-	param["refund_desc"] = p.RefundDesc
-	param["refund_fee"] = p.RefundFee
-	param["total_fee"] = p.TotalFee
-	param["sign_type"] = util.SignTypeMD5
-	param["transaction_id"] = p.TransactionID
+	param := refund.GetSignParam(p)
 
 	sign, err := util.ParamSign(param, refund.Key)
 	if err != nil {
 		return
 	}
 
-	request := request{
-		AppID:         refund.AppID,
-		MchID:         refund.MchID,
-		NonceStr:      nonceStr,
-		Sign:          sign,
-		SignType:      util.SignTypeMD5,
-		TransactionID: p.TransactionID,
-		OutRefundNo:   p.OutRefundNo,
-		TotalFee:      p.TotalFee,
-		RefundFee:     p.RefundFee,
-		RefundDesc:    p.RefundDesc,
+	req := request{
+		AppID:       param["appid"],
+		MchID:       param["mch_id"],
+		NonceStr:    param["nonce_str"],
+		Sign:        sign,
+		SignType:    param["sign_type"],
+		OutRefundNo: param["out_refund_no"],
+		TotalFee:    param["total_fee"],
+		RefundFee:   param["refund_fee"],
+		RefundDesc:  param["refund_desc"],
+		NotifyURL:   param["notify_url"],
 	}
-	rawRet, err := util.PostXMLWithTLS(refundGateway, request, p.RootCa, refund.MchID)
+	if p.OutTradeNo != "" {
+		req.OutTradeNo = p.OutTradeNo
+	}
+	if p.TransactionID != "" {
+		req.TransactionID = p.TransactionID
+	}
+
+	rawRet, err := util.PostXMLWithTLS(refundGateway, req, p.RootCa, refund.MchID)
 	if err != nil {
 		return
 	}
@@ -119,4 +120,32 @@ func (refund *Refund) Refund(p *Params) (rsp Response, err error) {
 	}
 	err = fmt.Errorf("[msg : xmlUnmarshalError] [rawReturn : %s] [sign : %s]", string(rawRet), sign)
 	return
+}
+
+// GetSignParam 获取签名的参数
+func (refund *Refund) GetSignParam(p *Params) (param map[string]string) {
+	nonceStr := util.RandomStr(32)
+	param = make(map[string]string)
+	param["appid"] = refund.AppID
+	param["mch_id"] = refund.MchID
+	param["nonce_str"] = nonceStr
+	param["out_refund_no"] = p.OutRefundNo
+	param["refund_desc"] = p.RefundDesc
+	param["refund_fee"] = p.RefundFee
+	param["total_fee"] = p.TotalFee
+
+	if p.SignType == "" {
+		param["sign_type"] = util.SignTypeMD5
+	}
+	if p.OutTradeNo != "" {
+		param["out_trade_no"] = p.OutTradeNo
+	}
+	if p.TransactionID != "" {
+		param["transaction_id"] = p.TransactionID
+	}
+	if p.NotifyURL != "" {
+		param["notify_url"] = p.NotifyURL
+	}
+
+	return param
 }
